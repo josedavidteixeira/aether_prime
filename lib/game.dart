@@ -115,7 +115,7 @@ class _SpaceGameState extends State<SpaceGame> {
   // ------------------- GERAR OBSTÁCULO -------------------
   void generateObstacle() {
     double speed = baseSpeed + random.nextDouble() * 0.01;
-    double initialSize = 40 + random.nextDouble() * 20; 
+    double initialSize = 40 + random.nextDouble() * 20; // tamanho inicial 40-60
     obstacles.add({
       'x': random.nextDouble(),
       'y': 0.0,
@@ -137,30 +137,35 @@ class _SpaceGameState extends State<SpaceGame> {
       double spaceshipHeight = 40;
       double spaceshipBottom = 80;
 
-      
-      double difficultyFactor = (score / 200).clamp(0, 10); 
+      // ------------------- DIFICULDADE PROGRESSIVA -------------------
+      double difficultyFactor = (score / 200).clamp(0, 10); // de 0 a 10
+
+      // velocidade das bolinhas aumenta suavemente
       double speedIncrement = difficultyFactor * 0.002;
       if (speedIncrement > 0.03) speedIncrement = 0.03;
 
+      // aumenta quantidade máxima de obstáculos progressivamente
       maxObstacles = baseMaxObstacles + (difficultyFactor ~/ 1);
       if (maxObstacles > 20) maxObstacles = 20;
 
+      // ------------------- ATUALIZAÇÃO DOS OBSTÁCULOS -------------------
       for (var obstacle in obstacles) {
         obstacle['y'] = obstacle['y']! + obstacle['speed']! + speedIncrement;
-        
+        // crescimento gradual das bolinhas
         obstacle['size'] = obstacle['size']! + 0.01 + difficultyFactor * 0.002;
         if (obstacle['size']! > 80) obstacle['size'] = 80;
       }
 
-      
+      // remove obstáculos que saíram da tela
       obstacles.removeWhere((obstacle) => obstacle['y']! > 1.0);
 
-   
+      // ------------------- SPAWN CONSTANTE -------------------
+      // enquanto houver espaço para obstáculos, gera continuamente
       while (obstacles.length < maxObstacles) {
         generateObstacle();
       }
 
-   
+      // ------------------- DETECÇÃO DE COLISÃO -------------------
       double spaceshipLeft = spaceshipX * screenWidth;
       double spaceshipRight = spaceshipLeft + spaceshipWidth;
       double spaceshipTop = screenHeight - spaceshipBottom - spaceshipHeight;
@@ -263,7 +268,7 @@ class _SpaceGameState extends State<SpaceGame> {
               ),
             ),
 
-           
+            // Obstáculos como círculos cinza
             for (var obstacle in obstacles)
               Positioned(
                 left: obstacle['x']! * MediaQuery.of(context).size.width -
@@ -279,7 +284,7 @@ class _SpaceGameState extends State<SpaceGame> {
                 ),
               ),
 
-       
+            // Tela de Game Over
             if (isGameOver)
               Center(
                 child: Column(
