@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:math';
+
+enum MoveDirection { none, left, right }
 
 // ------------------- CORES PADRÃO -------------------
 const Color buttonTextColor = Color(0xFF222222); // tom escuro padronizado
@@ -113,13 +116,20 @@ class _SpaceGameState extends State<SpaceGame> {
   List<Map<String, double>> bullets = [];
   final double bulletSpeed = 0.03;
 
+  MoveDirection _moveDirection = MoveDirection.none;
+  final double spaceshipSpeed = 0.015;
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _focusNode.dispose(); 
+    super.dispose();
+  }
+
   void fireBullet() {
     if (isGameOver) return;
     setState(() {
-      bullets.add({
-        'x': spaceshipX,
-        'y': 0.85, 
-      });
+      bullets.add({'x': spaceshipX, 'y': 0.85});
     });
   }
 
@@ -140,6 +150,15 @@ class _SpaceGameState extends State<SpaceGame> {
     if (isGameOver) return;
 
     setState(() {
+
+      if (_moveDirection == MoveDirection.right) {
+        spaceshipX += spaceshipSpeed;
+      } else if (_moveDirection == MoveDirection.left) {
+        spaceshipX -= spaceshipSpeed;
+      }
+
+      spaceshipX = spaceshipX.clamp(0.0, 1.0);
+
       tick++;
 
       double screenWidth = MediaQuery.of(context).size.width;
@@ -243,9 +262,11 @@ class _SpaceGameState extends State<SpaceGame> {
       score = 0;
       tick = 0;
       isGameOver = false;
+      _moveDirection = MoveDirection.none;
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).requestFocus(_focusNode);
       Future.doWhile(() async {
         updateGame();
         await Future.delayed(Duration(milliseconds: 50));
@@ -255,24 +276,12 @@ class _SpaceGameState extends State<SpaceGame> {
   }
 
   // ------------------- CONTROLES -------------------
-  void moveLeft() {
-    setState(() {
-      spaceshipX -= 0.05;
-      if (spaceshipX < 0) spaceshipX = 0;
-    });
-  }
-
-  void moveRight() {
-    setState(() {
-      spaceshipX += 0.05;
-      if (spaceshipX > 1) spaceshipX = 1;
-    });
-  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).requestFocus(_focusNode);
       Future.doWhile(() async {
         updateGame();
         await Future.delayed(Duration(milliseconds: 50));
@@ -297,7 +306,30 @@ class _SpaceGameState extends State<SpaceGame> {
           ),
         ],
       ),
-      body: Container(
+      body: KeyboardListener(
+        focusNode: _focusNode,
+        onKeyEvent: (KeyEvent event) {
+          final isLeftPressed = event.logicalKey == LogicalKeyboardKey.arrowLeft;
+          final isRightPressed = event.logicalKey == LogicalKeyboardKey.arrowRight;
+          final isSpacePressed = event.logicalKey == LogicalKeyboardKey.space;
+
+          if (event is KeyDownEvent) {
+            if (isLeftPressed) {
+              setState(() => _moveDirection = MoveDirection.left);
+            } else if (isRightPressed) {
+              setState(() => _moveDirection = MoveDirection.right);
+            } else if (isSpacePressed) {
+              fireBullet();
+            }
+          } else if (event is KeyUpEvent) {
+            // Para de mover apenas se a tecla solta for a da direção atual
+            if ((isLeftPressed && _moveDirection == MoveDirection.left) ||
+                (isRightPressed && _moveDirection == MoveDirection.right)) {
+              setState(() => _moveDirection = MoveDirection.none);
+            }
+          }
+        },
+      child: Container(
         color: Colors.black,
         child: Stack(
           children: [
@@ -385,20 +417,27 @@ class _SpaceGameState extends State<SpaceGame> {
               ),
 
             Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton(
-                      onPressed: moveLeft,
-                      child: Icon(Icons.arrow_left),
-                      style: ElevatedButton.styleFrom(
-                        shape: CircleBorder(),
-                        padding: EdgeInsets.all(20),
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // Botão Esquerdo
+                      GestureDetector(
+                        onTapDown: (_) => setState(() => _moveDirection = MoveDirection.left),
+                        onTapUp: (_) {
+                          if (_moveDirection == MoveDirection.left) {
+                            setState(() => _moveDirection = MoveDirection.none);
+                          }
+                        },
+                        onTapCancel: () {
+                           if (_moveDirection == MoveDirection.left) {
+                            setState(() => _moveDirection = MoveDirection.none);
+                          }
+                        },
+                        child: CircleAvatar(radius: 35, child: Icon(Icons.arrow_left, size: 40)),
                       ),
-                    ),
                     ElevatedButton(
                       onPressed: fireBullet,
                       child: Icon(Icons.gps_fixed, size: 30),
@@ -408,19 +447,26 @@ class _SpaceGameState extends State<SpaceGame> {
                         padding: EdgeInsets.all(25),
                       ),
                     ),
-                    ElevatedButton(
-                      onPressed: moveRight,
-                      child: Icon(Icons.arrow_right),
-                      style: ElevatedButton.styleFrom(
-                        shape: CircleBorder(),
-                        padding: EdgeInsets.all(20),
+                    GestureDetector(
+                        onTapDown: (_) => setState(() => _moveDirection = MoveDirection.right),
+                        onTapUp: (_) {
+                           if (_moveDirection == MoveDirection.right) {
+                            setState(() => _moveDirection = MoveDirection.none);
+                          }
+                        },
+                         onTapCancel: () {
+                           if (_moveDirection == MoveDirection.right) {
+                            setState(() => _moveDirection = MoveDirection.none);
+                          }
+                        },
+                        child: CircleAvatar(radius: 35, child: Icon(Icons.arrow_right, size: 40)),
                       ),
-                    ),
                   ],
                 ),
               ),
             ),
           ],
+          ),
         ),
       ),
     );
