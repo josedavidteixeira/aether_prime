@@ -147,6 +147,7 @@ class _SpaceGameState extends State<SpaceGame> {
 
   // ------------------- ATUALIZAÇÃO DO JOGO -------------------
   void updateGame() {
+    if (!mounted) return;
     if (isGameOver) return;
 
     setState(() {
