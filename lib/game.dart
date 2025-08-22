@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 
-void main() => runApp(MyApp());
-
 // ------------------- CORES PADRÃO -------------------
 const Color buttonTextColor = Color(0xFF222222); // tom escuro padronizado
 
@@ -112,6 +110,19 @@ class _SpaceGameState extends State<SpaceGame> {
   int maxObstacles = 5;
   int tick = 0;
 
+  List<Map<String, double>> bullets = [];
+  final double bulletSpeed = 0.03;
+
+  void fireBullet() {
+    if (isGameOver) return;
+    setState(() {
+      bullets.add({
+        'x': spaceshipX,
+        'y': 0.85, 
+      });
+    });
+  }
+
   // ------------------- GERAR OBSTÁCULO -------------------
   void generateObstacle() {
     double speed = baseSpeed + random.nextDouble() * 0.01;
@@ -164,6 +175,37 @@ class _SpaceGameState extends State<SpaceGame> {
       while (obstacles.length < maxObstacles) {
         generateObstacle();
       }
+
+      for (var bullet in bullets) {
+        bullet['y'] = bullet['y']! - bulletSpeed; 
+      }
+      bullets.removeWhere((bullet) => bullet['y']! < 0);
+
+      List<Map<String, double>> bulletsToRemove = [];
+      List<Map<String, double>> obstaclesToRemove = [];
+
+      for (var bullet in bullets) {
+        for (var obstacle in obstacles) {
+          final bulletX = bullet['x']! * screenWidth;
+          final bulletY = bullet['y']! * screenHeight;
+          final obstacleX = obstacle['x']! * screenWidth;
+          final obstacleY = obstacle['y']! * screenHeight;
+          final obstacleRadius = obstacle['size']! / 2;
+
+          final distance = sqrt(pow(bulletX - obstacleX, 2) + pow(bulletY - obstacleY, 2));
+
+          if (distance < obstacleRadius) {
+            // Se colidiu, marca ambos para remoção
+            bulletsToRemove.add(bullet);
+            obstaclesToRemove.add(obstacle);
+            score += 10; // Adiciona 10 pontos por obstáculo destruído
+          }
+        }
+      }
+
+      // Remove os itens que colidiram
+      obstacles.removeWhere((obs) => obstaclesToRemove.contains(obs));
+      bullets.removeWhere((bul) => bulletsToRemove.contains(bul));
 
       // ------------------- DETECÇÃO DE COLISÃO -------------------
       double spaceshipLeft = spaceshipX * screenWidth;
@@ -284,6 +326,20 @@ class _SpaceGameState extends State<SpaceGame> {
                 ),
               ),
 
+              for (var bullet in bullets)
+              Positioned(
+                left: bullet['x']! * MediaQuery.of(context).size.width - 2.5, // Centraliza o tiro
+                top: bullet['y']! * MediaQuery.of(context).size.height,
+                child: Container(
+                  width: 5,
+                  height: 15,
+                  decoration: BoxDecoration(
+                    color: Colors.yellow,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                ),
+              ),
+
             // Tela de Game Over
             if (isGameOver)
               Center(
@@ -341,6 +397,15 @@ class _SpaceGameState extends State<SpaceGame> {
                       style: ElevatedButton.styleFrom(
                         shape: CircleBorder(),
                         padding: EdgeInsets.all(20),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: fireBullet,
+                      child: Icon(Icons.gps_fixed, size: 30),
+                       style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: CircleBorder(),
+                        padding: EdgeInsets.all(25),
                       ),
                     ),
                     ElevatedButton(
